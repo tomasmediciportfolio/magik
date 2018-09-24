@@ -1,0 +1,32 @@
+_block
+    _local pni_view << gis_program_manager.cached_dataset(:gis)
+    _local engine << GO_ML_data_for_geojson.new(pni_view)
+    _local root_output_directory << "C:\temp"
+    
+    _local zone_names << {"1-201", "1-202", "1-203", "1-204", "1-101", "141-142", "141-153", "141-152", "141-221", "189-122", "189-121", "189-111", "189-101", "124-151", "S1229", "S1230", "S1222", "S1228", "S1223", "S1270", "S1269", "S1268", "S553", "S552", "S875", "S877", "S874", "S861", "S864"}
+ 
+    _for a_zone_name _over zone_names.fast_elements()
+    _loop
+# Assumption: zone names are unique and zones exist
+		_local a_zone << pni_view.collection(:ftth!zone).select(predicate.eq(:identification, a_zone_name)).an_element()
+		engine.zone << a_zone
+		engine.calculate()
+		_local zone_directory << system.pathname_down(root_output_directory, a_zone_name)
+ 
+		_if _not system.file_exists?(zone_directory)
+		_then
+    		system.mkdir(zone_directory)
+		_endif
+ 
+		_local zone_file << system.pathname_down(zone_directory, a_zone_name + "_zone.geojson")
+		_local ur_file << system.pathname_down(zone_directory, a_zone_name + "_asbuilt_ur.geojson")
+		_local uub_file << system.pathname_down(zone_directory, a_zone_name + "_asbuilt_uub.geojson")
+		_local cable_file << system.pathname_down(zone_directory, a_zone_name + "_asbuilt_cables.geojson")
+		_local conduit_file << system.pathname_down(zone_directory, a_zone_name + "_asbuilt_conduits.geojson")
+	
+		engine.write_ur(ur_file)
+		engine.write_uub(uub_file)
+		engine.write_cables(cable_file)
+		engine.write_conduits(conduit_file)
+    _endloop
+_endblock 

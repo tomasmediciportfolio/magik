@@ -1,0 +1,325 @@
+#% text_encoding = iso8859_1
+########################################################################
+##
+## File name      : GO_ML_data_for_geojson.magik
+##
+## Creation date  : 2018-07-09
+## Author         : Tomas Medici, @breakoutimage.dk
+##
+##
+## Copyright      : breakoutimage A/S
+## e-mail         : info@breakoutimage.dk
+##
+## Description    : 
+##
+##
+########################################################################
+_package user
+$
+def_slotted_exemplar(:GO_ML_data_for_geojson,
+    ## 
+    ## 
+    ## 
+    {
+	{:pni_view, _unset},
+	{:zone, _unset},
+	{:ur, _unset},
+	{:uub, _unset},
+	{:cables, _unset},
+	{:conduits, _unset}
+    })
+$
+GO_ML_data_for_geojson.define_slot_access(:zone, :read, :public)
+$
+_method GO_ML_data_for_geojson.new(pni_view)
+    ## 
+    ## 
+    >> _clone.init(pni_view)
+_endmethod
+$
+_private _method GO_ML_data_for_geojson.init(pni_view)
+    ## 
+    ##
+    .pni_view << pni_view
+    .ur << rwo_set.new()
+    .uub << rwo_set.new()
+    .cables << rwo_set.new()
+    .conduits << rwo_set.new()
+    
+    >> _self
+_endmethod
+$
+_method GO_ML_data_for_geojson.zone << new_zone
+    ## 
+    ##
+    .zone << new_zone
+    
+    _self.reset()
+_endmethod
+$
+
+_method GO_ML_data_for_geojson.zone
+    ## 
+    ## 
+    _return .zone
+_endmethod
+$
+_method GO_ML_data_for_geojson.ur
+    ## 
+    ## 
+    _return .ur
+_endmethod
+$
+_method GO_ML_data_for_geojson.uub
+    ## 
+    ## 
+    _return .uub
+_endmethod
+$
+_method GO_ML_data_for_geojson.cables
+    ## 
+    ## 
+    _return .cables
+_endmethod
+$
+_method GO_ML_data_for_geojson.conduits
+    ## 
+    ## 
+    _return .conduits
+_endmethod
+$
+_method GO_ML_data_for_geojson.reset()
+    ## 
+    ## 
+    .cables.empty()
+    .conduits.empty()
+    .ur.empty()
+    .uub.empty()
+_endmethod
+$
+_method GO_ML_data_for_geojson.calculate()
+    ## 
+    ##
+    _local zone_ur << gis_program_manager.cached_dataset(:gis).world.geometry_set().
+		      select(:geometry_field, :underground_route, :route).
+		      select(:predicate, :underground_route, predicate.eq(:construction_status, "Aktiv")).
+		      select(:interacting_with, .zone.location).rwo_set()
+
+     _local zone_uub << gis_program_manager.cached_dataset(:gis).world.geometry_set().
+			select(:geometry_field, :uub, :location).
+			select(:predicate, :uub, predicate.eq(:construction_status, "Aktiv")).
+			select(:interacting_with, .zone.location).rwo_set()
+    
+    _for a_struct _over zone_ur.fast_elements()
+    _loop
+	.ur.add(a_struct.route)
+	.cables.add_all(a_struct.cables())
+	.conduits.add_all(a_struct.conduits)
+    _endloop
+
+    _for a_uub _over zone_uub.fast_elements()
+    _loop
+	.uub.add(a_uub.location)
+    _endloop
+_endmethod
+$
+_method GO_ML_data_for_geojson.write_zone(file)
+    ##
+    ##
+    crs_from << .pni_view.world.coordinate_system
+    crs_to << .pni_view.coordinate_System(:europe_longlat_etrs89_degree)
+    transformer << transform.new_converting_cs_to_cs(crs_from, crs_to)
+
+     writer << boi_geojson_writer.new_for_file(file, _unset, transformer, _true, "urn:ogc:def:crs:OGC:1.3:CRS84")
+    _protect
+	writer.write_feature(.zone.location)
+    _protection
+	writer.close()
+    _endprotect
+_endmethod
+$
+_method GO_ML_data_for_geojson.write_ur(file)
+    ##
+    ##
+    crs_from << .pni_view.world.coordinate_system
+    crs_to << .pni_view.coordinate_System(:europe_longlat_etrs89_degree)
+    transformer << transform.new_converting_cs_to_cs(crs_from, crs_to)
+
+     writer << boi_geojson_writer.new_for_file(file, _unset, transformer, _unset, "urn:ogc:def:crs:OGC:1.3:CRS84")
+    _protect
+	_for a_ur _over .ur.fast_elements()
+	_loop
+	    writer.write_feature(a_ur)
+	_endloop
+    _protection
+	writer.close()
+    _endprotect
+_endmethod
+$
+_method GO_ML_data_for_geojson.write_uub(file)
+    ##
+    ##
+    crs_from << .pni_view.world.coordinate_system
+    crs_to << .pni_view.coordinate_System(:europe_longlat_etrs89_degree)
+    transformer << transform.new_converting_cs_to_cs(crs_from, crs_to)
+
+     writer << boi_geojson_writer.new_for_file(file, _unset, transformer, _unset, "urn:ogc:def:crs:OGC:1.3:CRS84")
+    _protect
+	_for a_uub _over .uub.fast_elements()
+	_loop
+	    writer.write_feature(a_uub)
+	_endloop
+    _protection
+	writer.close()
+    _endprotect
+_endmethod
+$
+_method GO_ML_data_for_geojson.write_cables(file)
+    ## 
+    ##
+    crs_from << .pni_view.world.coordinate_system
+    crs_to << .pni_view.coordinate_System(:europe_longlat_etrs89_degree)
+    transformer << transform.new_converting_cs_to_cs(crs_from, crs_to)
+    
+    writer << boi_geojson_writer.new_for_file(file, _unset, transformer, _unset, "urn:ogc:def:crs:OGC:1.3:CRS84")
+    _protect
+	_for a_cable _over .cables.fast_elements()
+	_loop
+	    writer.write_feature(_self.sectors_for_cable(a_cable),
+				 _self.properties_for_cable(a_cable))
+	_endloop
+    _protection
+	writer.close()
+    _endprotect
+_endmethod
+$
+_method GO_ML_data_for_geojson.write_conduits(file)
+    ## 
+    ##
+    crs_from << .pni_view.world.coordinate_system
+    crs_to << .pni_view.coordinate_System(:europe_longlat_etrs89_degree)
+    transformer << transform.new_converting_cs_to_cs(crs_from, crs_to)
+    
+    writer << boi_geojson_writer.new_for_file(file, _unset, transformer, _unset, "urn:ogc:def:crs:OGC:1.3:CRS84")
+    _protect
+	_for a_conduit _over .conduits.fast_elements()
+	_loop
+	    writer.write_feature(_self.sectors_for_conduit(a_conduit),
+				 _self.properties_for_conduit(a_conduit))
+	_endloop
+    _protection
+	writer.close()
+    _endprotect
+_endmethod
+$
+_method GO_ML_data_for_geojson.writer(structures)
+    ## 
+    ## 
+     writer_1 << boi_geojson_writer.new_for_file("C:\temp\cable.json")
+     writer_2 << boi_geojson_writer.new_for_file("C:\temp\conduit.json")
+#    writer_3 << boi_geojson_writer.new_for_file("C:\temp\survey.json")
+    _protect
+	_for a_struct _over structures.fast_elements()
+	_loop
+	    _if a_struct.source_collection.name _is :sheath_with_loc
+	    _then
+		writer_1.write_feature(_self.sectors_for_cable(a_struct),
+				       _self.properties_for_cable(a_struct))
+	    _elif a_struct.source_collection.name _is :mit_conduit
+	    _then
+		writer_2.write_feature(_self.sectors_for_conduit(a_struct),
+				       _self.properties_for_conduit(a_struct))
+#	    _elif a_struct.source_collection.name _is :dsfl_line
+#	    _then
+#		writer_3.write_feature(a_struct.line)
+	    _endif
+	_endloop
+    _protection 
+	writer_1.close()
+	writer_2.close()
+#	writer_3.close()
+    _endprotect
+_endmethod
+$
+_method GO_ML_data_for_geojson.properties_for_conduit(conduit)
+    ## 
+    ## Returns a property list for the conduit, to be passed on
+    ## to the geojson writer, as one of the arguments in
+    ## write_feature()  in boi_geojson_writer
+    ##
+    conduit_property_list << property_list.new_with(:id, conduit.id, :identification, conduit.name)
+	_return conduit_property_list
+_endmethod
+$
+_method GO_ML_data_for_geojson.sectors_for_conduit(conduit)
+    ## 
+    ## Returns a geometry for the conduit, to be passed on to the
+    ## geojson writer, as one of the argument in write_feature() in
+    ## boi_geojson_writer 
+    ##
+    current_node << _unset
+    combined_route << sector_rope.new()
+    _for i, a_structure _over conduit.ordered_structures().fast_keys_and_elements()
+    _loop
+	_if i = 1
+	_then
+	    current_node << a_structure.location.node
+	_elif a_structure.is_a_point_structure?
+	_then
+	_elif a_structure.is_a_route?
+	_then
+	    _if a_structure.route.first_node = current_node
+	    _then
+		combined_route.add(sector.new_from_iter(a_structure.route, :|vertices()|))
+		current_node << a_structure.route.last_node
+	    _else
+		combined_route.add(sector.reversed().new_from_iter(a_structure.route, :|vertices()|))
+		current_node << a_structure.route.first_node
+	    _endif
+	_endif
+    _endloop
+    _return combined_route
+_endmethod
+$
+
+_method GO_ML_data_for_geojson.properties_for_cable(cable)
+    ## 
+    ## Returns a property list for the cable, to be passed on
+    ## to the geojson writer, as one of the arguments in
+    ## write_feature()  in boi_geojson_writer
+    ##
+	cable_property_list << property_list.new_with(:id, cable.id,
+						      :identification, cable.name)
+	_return cable_property_list
+_endmethod
+$
+_method GO_ML_data_for_geojson.sectors_for_cable(cable)
+    ## 
+    ## Returns a geometry for the cable, to be passed on to the
+    ## geojson writer, as one of the argument in write_feature() in
+    ## boi_geojson_writer 
+    ##
+    current_node << _unset
+    combined_route << sector_rope.new()
+    _for i, a_structure _over cable.ordered_structures().fast_keys_and_elements()
+    _loop
+	_if i = 1
+	_then
+	    current_node << a_structure.location.node
+	_elif a_structure.is_a_point_structure?
+	_then
+	_elif a_structure.is_a_route?
+	_then
+	    _if a_structure.route.first_node = current_node
+	    _then
+		combined_route.add(sector.new_from_iter(a_structure.route, :|vertices()|))
+		current_node << a_structure.route.last_node
+	    _else
+		combined_route.add(sector.reversed().new_from_iter(a_structure.route, :|vertices()|))
+		current_node << a_structure.route.first_node
+	    _endif
+	_endif
+    _endloop
+    _return combined_route
+_endmethod
+$
